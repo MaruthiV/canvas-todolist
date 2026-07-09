@@ -5,6 +5,8 @@ import type { Camera, FocusTarget, Group, Note } from './types'
 const STORAGE_KEY = 'canvas-todo-v1'
 
 export const NOTE_WIDTH = 280
+export const MIN_NOTE_W = 200
+export const MIN_NOTE_H = 120
 export const GROUP_PAD = 16
 export const GROUP_HEADER = 40
 export const GROUP_GAP = 14
@@ -49,6 +51,7 @@ interface Store {
   updateNoteContent: (id: string, content: Note['content'], title: string) => void
   moveNote: (id: string, x: number, y: number) => void
   setNoteWidth: (id: string, w: number) => void
+  resizeNote: (id: string, rect: { x: number; y: number; width: number; height: number }) => void
   setNoteColor: (id: string, color: string) => void
   deleteNote: (id: string) => void
 
@@ -98,6 +101,7 @@ export const useStore = create<Store>((set, get) => {
         x: x - NOTE_WIDTH / 2,
         y: y - 24,
         width: NOTE_WIDTH,
+        height: null,
         color: PALETTE[0],
         groupId: null,
       }
@@ -129,6 +133,26 @@ export const useStore = create<Store>((set, get) => {
         const n = s.notes[id]
         if (!n) return s
         return { notes: { ...s.notes, [id]: { ...n, width: Math.max(200, w) } } }
+      })
+      persist()
+    },
+
+    resizeNote: (id, rect) => {
+      set((s) => {
+        const n = s.notes[id]
+        if (!n) return s
+        return {
+          notes: {
+            ...s.notes,
+            [id]: {
+              ...n,
+              x: rect.x,
+              y: rect.y,
+              width: Math.max(MIN_NOTE_W, rect.width),
+              height: Math.max(MIN_NOTE_H, rect.height),
+            },
+          },
+        }
       })
       persist()
     },

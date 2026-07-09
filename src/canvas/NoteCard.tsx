@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
 import type { Note } from '../types'
 import { Editor } from '../editor/Editor'
-import { PALETTE, useStore } from '../store'
+import { MIN_NOTE_H, MIN_NOTE_W, PALETTE, useStore } from '../store'
+
+type Corner = 'nw' | 'ne' | 'sw' | 'se'
 
 interface Props {
   note: Note
@@ -18,11 +20,48 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
   const setNoteColor = useStore((s) => s.setNoteColor)
   const reorderInGroup = useStore((s) => s.reorderInGroup)
   const removeFromGroup = useStore((s) => s.removeFromGroup)
+  const resizeNote = useStore((s) => s.resizeNote)
 
   const [showColors, setShowColors] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(
     null,
   )
+  const resize = useRef<
+    { corner: Corner; sx: number; sy: number; x: number; y: number; w: number; h: number } | null
+  >(null)
+
+  const onResizeDown = (corner: Corner) => (e: React.PointerEvent) => {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    e.preventDefault()
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    const h = note.height ?? cardRef.current?.offsetHeight ?? MIN_NOTE_H
+    resize.current = { corner, sx: e.clientX, sy: e.clientY, x: note.x, y: note.y, w: note.width, h }
+  }
+
+  const onResizeMove = (e: React.PointerEvent) => {
+    const r = resize.current
+    if (!r) return
+    const dx = (e.clientX - r.sx) / zoom
+    const dy = (e.clientY - r.sy) / zoom
+    let { x, y, w, h } = { x: r.x, y: r.y, w: r.w, h: r.h }
+    if (r.corner === 'se' || r.corner === 'ne') w = Math.max(MIN_NOTE_W, r.w + dx)
+    if (r.corner === 'sw' || r.corner === 'nw') {
+      w = Math.max(MIN_NOTE_W, r.w - dx)
+      x = r.x + (r.w - w)
+    }
+    if (r.corner === 'se' || r.corner === 'sw') h = Math.max(MIN_NOTE_H, r.h + dy)
+    if (r.corner === 'ne' || r.corner === 'nw') {
+      h = Math.max(MIN_NOTE_H, r.h - dy)
+      y = r.y + (r.h - h)
+    }
+    resizeNote(note.id, { x, y, width: w, height: h })
+  }
+
+  const onResizeUp = () => {
+    resize.current = null
+  }
 
   const onHeaderPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return
@@ -53,6 +92,7 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
 
   return (
     <div
+      ref={cardRef}
       data-note-id={note.id}
       className={'note-card' + (selected ? ' is-selected' : '')}
       style={{
@@ -60,6 +100,7 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
           ? { position: 'absolute', left: note.x, top: note.y }
           : { position: 'relative' }),
         width: note.width,
+        height: positioned && note.height != null ? note.height : undefined,
         background: note.color,
       }}
       onPointerDown={(e) => e.stopPropagation()}
@@ -114,7 +155,20 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
           </button>
         </div>
       </div>
-      <Editor noteId={note.id} title={note.title} content={note.content} />
+      <div className="note-scroll">
+        <Editor noteId={note.id} title={note.title} content={note.content} />
+      </div>
+
+      {positioned &&
+        (['nw', 'ne', 'sw', 'se'] as Corner[]).map((corner) => (
+          <div
+            key={corner}
+            className={'resize-handle rh-' + corner}
+            onPointerDown={onResizeDown(corner)}
+            onPointerMove={onResizeMove}
+            onPointerUp={onResizeUp}
+          />
+        ))}
     </div>
   )
 }

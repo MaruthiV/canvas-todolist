@@ -7,6 +7,7 @@ export interface Note {
   x: number // world coords (ignored while grouped — layout is derived)
   y: number
   width: number
+  height: number | null // null = auto-grow with content; number = fixed (body scrolls)
   color: string // accent color of the card
   groupId: string | null
 }
