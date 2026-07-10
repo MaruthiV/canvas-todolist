@@ -46,7 +46,9 @@ body {
   left: 0;
   width: 0;
   height: 0;
-  will-change: transform;
+  /* Deliberately NOT promoting this to its own layer (no will-change/translateZ):
+     a cached bitmap layer would be rasterized once at 1× and then scaled, which
+     makes text blurry when zoomed in. Letting the browser re-paint keeps text crisp. */
 }
 
 .marquee {

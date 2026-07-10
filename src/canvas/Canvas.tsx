@@ -28,7 +28,9 @@ export function Canvas() {
   camRef.current = camera
 
   const [marquee, setMarquee] = useState<Marquee | null>(null)
-  const pan = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
+  const pan = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(
+    null,
+  )
   const marq = useRef<{ sx: number; sy: number } | null>(null)
   const spaceDown = useRef(false)
 
@@ -74,30 +76,33 @@ export function Canvas() {
   const onPointerDown = (e: React.PointerEvent) => {
     const isBackground = !(e.target as HTMLElement).closest('.note-card, .group-frame')
     if (!isBackground) return
+    if (e.button === 2) return // right-click does nothing on the canvas
     const cam = camRef.current
-    if (spaceDown.current || e.button === 1) {
-      pan.current = { sx: e.clientX, sy: e.clientY, ox: cam.x, oy: cam.y }
+
+    // Shift + left-drag = marquee region select.
+    if (e.button === 0 && e.shiftKey) {
+      const rect = viewportRef.current!.getBoundingClientRect()
+      const px = e.clientX - rect.left
+      const py = e.clientY - rect.top
+      marq.current = { sx: px, sy: py }
+      setMarquee({ x0: px, y0: py, x1: px, y1: py })
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
       return
     }
-    if (e.button !== 0) return
-    // Start marquee selection.
-    const rect = viewportRef.current!.getBoundingClientRect()
-    const px = e.clientX - rect.left
-    const py = e.clientY - rect.top
-    marq.current = { sx: px, sy: py }
-    setMarquee({ x0: px, y0: py, x1: px, y1: py })
-    if (!e.shiftKey) clearSelection()
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+
+    // Otherwise left-drag (or space/middle-drag) pans the canvas like a map.
+    if (e.button === 0 || e.button === 1 || spaceDown.current) {
+      pan.current = { sx: e.clientX, sy: e.clientY, ox: cam.x, oy: cam.y, moved: false }
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    }
   }
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (pan.current) {
-      setCamera({
-        ...camRef.current,
-        x: pan.current.ox + (e.clientX - pan.current.sx),
-        y: pan.current.oy + (e.clientY - pan.current.sy),
-      })
+      const ddx = e.clientX - pan.current.sx
+      const ddy = e.clientY - pan.current.sy
+      if (Math.abs(ddx) > 2 || Math.abs(ddy) > 2) pan.current.moved = true
+      setCamera({ ...camRef.current, x: pan.current.ox + ddx, y: pan.current.oy + ddy })
       return
     }
     if (marq.current) {
@@ -129,9 +134,12 @@ export function Canvas() {
             hits.push(n.id)
           }
         })
-        setSelection(hits)
+        // Shift-marquee adds to the current selection.
+        setSelection([...new Set([...selection, ...hits])])
       }
     }
+    // A plain click (pan that never moved) clears the selection.
+    if (pan.current && !pan.current.moved) clearSelection()
     marq.current = null
     pan.current = null
     setMarquee(null)
@@ -156,12 +164,13 @@ export function Canvas() {
       style={{
         backgroundSize: `${24 * camera.zoom}px ${24 * camera.zoom}px`,
         backgroundPosition: `${camera.x}px ${camera.y}px`,
-        cursor: pan.current ? 'grabbing' : 'default',
+        cursor: pan.current?.moved ? 'grabbing' : 'grab',
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onDoubleClick={onDoubleClick}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div
         className="world"
