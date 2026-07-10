@@ -18,7 +18,37 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    // Zoom the canvas (around screen center) instead of zooming the whole page.
+    const zoomAround = (factor: number) => {
+      const { camera, setCamera } = useStore.getState()
+      const cx = window.innerWidth / 2
+      const cy = window.innerHeight / 2
+      const zoom = Math.max(0.2, Math.min(2.5, camera.zoom * factor))
+      const wx = (cx - camera.x) / camera.zoom
+      const wy = (cy - camera.y) / camera.zoom
+      setCamera({ zoom, x: cx - wx * zoom, y: cy - wy * zoom })
+    }
+
     const onKey = (e: KeyboardEvent) => {
+      // Hijack the browser's ⌘/Ctrl +/−/0 page-zoom for canvas zoom.
+      if (e.metaKey || e.ctrlKey) {
+        if (e.key === '=' || e.key === '+') {
+          e.preventDefault()
+          zoomAround(1.2)
+          return
+        }
+        if (e.key === '-' || e.key === '_') {
+          e.preventDefault()
+          zoomAround(1 / 1.2)
+          return
+        }
+        if (e.key === '0') {
+          e.preventDefault()
+          zoomAround(1 / useStore.getState().camera.zoom) // reset to 100%
+          return
+        }
+      }
+
       const typing =
         e.target instanceof HTMLElement &&
         (e.target.isContentEditable ||
@@ -45,7 +75,7 @@ export default function App() {
     <div className="app">
       <div className="brand">
         <span className="brand-dot" /> canvas
-        <span className="brand-hint">double-click to add · drag to pan · ⌘-scroll to zoom · shift-drag to select · ⌘G to group</span>
+        <span className="brand-hint">double-click to add · drag to pan · ⌘+/− to zoom · shift-drag to select · ⌘G to group</span>
       </div>
       <AccountBar />
       <Canvas />
