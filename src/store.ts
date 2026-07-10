@@ -78,7 +78,22 @@ interface Store {
   closeContextMenu: () => void
   hoverGroupId: string | null
   setHoverGroupId: (id: string | null) => void
+
+  // cloud sync (transient — not persisted)
+  user: { id: string; email: string | null } | null
+  syncStatus: SyncStatus
+  setUser: (u: Store['user']) => void
+  setSyncStatus: (s: SyncStatus) => void
+  applyRemote: (data: { notes?: Record<string, Note>; groups?: Record<string, Group> }) => void
 }
+
+export type SyncStatus =
+  | 'disabled' // no cloud configured
+  | 'signedOut'
+  | 'syncing'
+  | 'saved'
+  | 'offline'
+  | 'error'
 
 const initial = load()
 
@@ -96,6 +111,15 @@ export const useStore = create<Store>((set, get) => {
     focus: null,
     contextMenu: null,
     hoverGroupId: null,
+    user: null,
+    syncStatus: 'disabled',
+
+    setUser: (user) => set({ user }),
+    setSyncStatus: (syncStatus) => set({ syncStatus }),
+    applyRemote: (data) => {
+      set((s) => ({ notes: data.notes ?? s.notes, groups: data.groups ?? s.groups }))
+      persist()
+    },
 
     setCamera: (camera) => {
       set({ camera })

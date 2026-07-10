@@ -3,6 +3,8 @@ import { Canvas } from './canvas/Canvas'
 import { Toolbar } from './canvas/Toolbar'
 import { FocusOverlay } from './canvas/FocusOverlay'
 import { ContextMenu } from './canvas/ContextMenu'
+import { AccountBar } from './canvas/AccountBar'
+import { initSync } from './lib/sync'
 import { useStore } from './store'
 
 export default function App() {
@@ -10,6 +12,10 @@ export default function App() {
   const selection = useStore((s) => s.selection)
   const deleteNote = useStore((s) => s.deleteNote)
   const focus = useStore((s) => s.focus)
+
+  useEffect(() => {
+    initSync()
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -41,6 +47,7 @@ export default function App() {
         <span className="brand-dot" /> canvas
         <span className="brand-hint">double-click to add · drag to pan · ⌘-scroll to zoom · shift-drag to select · ⌘G to group</span>
       </div>
+      <AccountBar />
       <Canvas />
       <Toolbar />
       <FocusOverlay />
