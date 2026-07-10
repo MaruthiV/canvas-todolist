@@ -75,7 +75,6 @@ export default function App() {
     <div className="app">
       <div className="brand">
         <span className="brand-dot" /> canvas
-        <span className="brand-hint">double-click to add · drag to pan · ⌘+/− to zoom · shift-drag to select · ⌘G to group</span>
       </div>
       <AccountBar />
       <Canvas />
