@@ -424,6 +424,13 @@ body {
 .tool-btn:hover {
   background: rgba(0, 0, 0, 0.05);
 }
+.tool-btn.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  color: var(--ink);
+}
 .tool-btn.accent {
   background: var(--accent);
   color: #fff;
