@@ -62,6 +62,7 @@ interface Store {
   ungroup: (id: string) => void
   reorderInGroup: (groupId: string, noteId: string, dir: -1 | 1) => void
   removeFromGroup: (noteId: string) => void
+  addNoteToGroup: (noteId: string, groupId: string) => void
 
   // selection
   setSelection: (ids: string[]) => void
@@ -70,6 +71,13 @@ interface Store {
 
   // focus
   setFocus: (f: FocusTarget) => void
+
+  // transient UI
+  contextMenu: { x: number; y: number; noteId: string } | null
+  openContextMenu: (x: number, y: number, noteId: string) => void
+  closeContextMenu: () => void
+  hoverGroupId: string | null
+  setHoverGroupId: (id: string | null) => void
 }
 
 const initial = load()
@@ -86,6 +94,8 @@ export const useStore = create<Store>((set, get) => {
     camera: initial?.camera ?? { x: 0, y: 0, zoom: 1 },
     selection: [],
     focus: null,
+    contextMenu: null,
+    hoverGroupId: null,
 
     setCamera: (camera) => {
       set({ camera })
@@ -277,6 +287,34 @@ export const useStore = create<Store>((set, get) => {
       })
       persist()
     },
+
+    addNoteToGroup: (noteId, groupId) => {
+      set((s) => {
+        const n = s.notes[noteId]
+        const target = s.groups[groupId]
+        if (!n || !target || n.groupId === groupId) return s
+        const groups = { ...s.groups }
+        // Detach from a previous group, if any.
+        if (n.groupId && groups[n.groupId]) {
+          const prev = groups[n.groupId]
+          const ids = prev.noteIds.filter((x) => x !== noteId)
+          if (ids.length === 0) delete groups[n.groupId]
+          else groups[n.groupId] = { ...prev, noteIds: ids }
+        }
+        const g = groups[groupId]
+        if (g && !g.noteIds.includes(noteId)) {
+          groups[groupId] = { ...g, noteIds: [...g.noteIds, noteId] }
+        }
+        const notes = { ...s.notes, [noteId]: { ...n, groupId } }
+        return { notes, groups, selection: s.selection.filter((x) => x !== noteId) }
+      })
+      persist()
+    },
+
+    openContextMenu: (x, y, noteId) => set({ contextMenu: { x, y, noteId } }),
+    closeContextMenu: () => set({ contextMenu: null }),
+    setHoverGroupId: (id) =>
+      set((s) => (s.hoverGroupId === id ? s : { hoverGroupId: id })),
 
     setSelection: (ids) => set({ selection: ids }),
 

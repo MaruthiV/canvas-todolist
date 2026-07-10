@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Canvas } from './canvas/Canvas'
 import { Toolbar } from './canvas/Toolbar'
 import { FocusOverlay } from './canvas/FocusOverlay'
+import { ContextMenu } from './canvas/ContextMenu'
 import { useStore } from './store'
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
       <Canvas />
       <Toolbar />
       <FocusOverlay />
+      <ContextMenu />
     </div>
   )
 }

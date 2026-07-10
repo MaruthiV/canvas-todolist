@@ -15,6 +15,7 @@ export function GroupFrame({ group, notes, zoom, selection }: Props) {
   const setGroupLabel = useStore((s) => s.setGroupLabel)
   const ungroup = useStore((s) => s.ungroup)
   const setFocus = useStore((s) => s.setFocus)
+  const isDropTarget = useStore((s) => s.hoverGroupId === group.id)
   const drag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -37,7 +38,8 @@ export function GroupFrame({ group, notes, zoom, selection }: Props) {
 
   return (
     <div
-      className="group-frame"
+      data-group-id={group.id}
+      className={'group-frame' + (isDropTarget ? ' is-drop-target' : '')}
       style={{
         position: 'absolute',
         left: group.x,

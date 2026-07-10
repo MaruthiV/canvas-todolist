@@ -336,6 +336,12 @@ body {
   background: rgba(255, 255, 255, 0.35);
   backdrop-filter: blur(2px);
 }
+.group-frame.is-drop-target {
+  border-style: solid;
+  border-color: var(--accent);
+  background: rgba(59, 110, 240, 0.07);
+  box-shadow: 0 0 0 2px rgba(59, 110, 240, 0.25);
+}
 .group-header {
   position: absolute;
   top: 0;
@@ -543,6 +549,80 @@ body {
 .focus-group-stack .note-card {
   width: 100% !important;
   max-width: 620px;
+}
+
+/* ---------- Context menu ---------- */
+.ctx-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.ctx-menu {
+  position: fixed;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--card-shadow);
+  padding: 6px;
+  animation: fade 0.1s ease;
+}
+.ctx-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  padding: 4px 8px 6px;
+}
+.ctx-empty {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  padding: 4px 8px 8px;
+  line-height: 1.4;
+}
+.ctx-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  padding: 8px 8px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font);
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.ctx-item:hover:not(:disabled) {
+  background: rgba(59, 110, 240, 0.1);
+}
+.ctx-item:disabled {
+  cursor: default;
+  color: var(--ink-soft);
+}
+.ctx-item-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+.ctx-check {
+  color: var(--accent);
+  font-size: 12px;
+}
+.ctx-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 5px 4px;
 }
 
 /* ---------- Slash menu ---------- */

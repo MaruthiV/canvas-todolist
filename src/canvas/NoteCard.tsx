@@ -5,6 +5,18 @@ import { MIN_NOTE_H, MIN_NOTE_W, PALETTE, useStore } from '../store'
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se'
 
+// Which group frame (if any) sits under a screen point — used for drag-to-add.
+function groupAtPoint(clientX: number, clientY: number): string | null {
+  const frames = document.querySelectorAll<HTMLElement>('[data-group-id]')
+  for (const el of frames) {
+    const r = el.getBoundingClientRect()
+    if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
+      return el.getAttribute('data-group-id')
+    }
+  }
+  return null
+}
+
 interface Props {
   note: Note
   positioned: boolean // true = absolute world placement (ungrouped)
@@ -21,6 +33,9 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
   const reorderInGroup = useStore((s) => s.reorderInGroup)
   const removeFromGroup = useStore((s) => s.removeFromGroup)
   const resizeNote = useStore((s) => s.resizeNote)
+  const addNoteToGroup = useStore((s) => s.addNoteToGroup)
+  const setHoverGroupId = useStore((s) => s.setHoverGroupId)
+  const openContextMenu = useStore((s) => s.openContextMenu)
 
   const [showColors, setShowColors] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -80,6 +95,8 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
     const dy = (e.clientY - drag.current.sy) / zoom
     if (Math.abs(dx) > 2 || Math.abs(dy) > 2) drag.current.moved = true
     moveNote(note.id, drag.current.ox + dx, drag.current.oy + dy)
+    // Highlight a group the note is being dragged over (drop-to-add).
+    setHoverGroupId(drag.current.moved ? groupAtPoint(e.clientX, e.clientY) : null)
   }
 
   const onHeaderPointerUp = (e: React.PointerEvent) => {
@@ -87,7 +104,18 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
     drag.current = null
     if (!d || !d.moved) {
       toggleSelect(note.id, e.shiftKey)
+      return
     }
+    // Dropped onto a group → add it there.
+    const gid = groupAtPoint(e.clientX, e.clientY)
+    setHoverGroupId(null)
+    if (gid) addNoteToGroup(note.id, gid)
+  }
+
+  const onContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    openContextMenu(e.clientX, e.clientY, note.id)
   }
 
   return (
@@ -104,6 +132,7 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
         background: note.color,
       }}
       onPointerDown={(e) => e.stopPropagation()}
+      onContextMenu={onContextMenu}
     >
       <div
         className="note-header"
