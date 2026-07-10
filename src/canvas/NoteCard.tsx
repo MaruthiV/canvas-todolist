@@ -30,18 +30,24 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
   const setFocus = useStore((s) => s.setFocus)
   const deleteNote = useStore((s) => s.deleteNote)
   const setNoteColor = useStore((s) => s.setNoteColor)
-  const reorderInGroup = useStore((s) => s.reorderInGroup)
   const removeFromGroup = useStore((s) => s.removeFromGroup)
+  const moveInGroup = useStore((s) => s.moveInGroup)
   const resizeNote = useStore((s) => s.resizeNote)
   const addNoteToGroup = useStore((s) => s.addNoteToGroup)
   const setHoverGroupId = useStore((s) => s.setHoverGroupId)
   const openContextMenu = useStore((s) => s.openContextMenu)
 
   const [showColors, setShowColors] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
-  const drag = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(
-    null,
-  )
+  const drag = useRef<{
+    mode: 'move' | 'reorder'
+    sx: number
+    sy: number
+    ox: number
+    oy: number
+    moved: boolean
+  } | null>(null)
   const resize = useRef<
     { corner: Corner; sx: number; sy: number; x: number; y: number; w: number; h: number } | null
   >(null)
@@ -81,35 +87,63 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
   const onHeaderPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return
     e.stopPropagation()
-    if (!positioned) {
-      // Grouped notes aren't freely draggable; header click just selects.
-      return
-    }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-    drag.current = { sx: e.clientX, sy: e.clientY, ox: note.x, oy: note.y, moved: false }
+    drag.current = {
+      mode: positioned ? 'move' : 'reorder',
+      sx: e.clientX,
+      sy: e.clientY,
+      ox: note.x,
+      oy: note.y,
+      moved: false,
+    }
+    if (!positioned) setDragging(true)
   }
 
   const onHeaderPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current) return
-    const dx = (e.clientX - drag.current.sx) / zoom
-    const dy = (e.clientY - drag.current.sy) / zoom
-    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) drag.current.moved = true
-    moveNote(note.id, drag.current.ox + dx, drag.current.oy + dy)
-    // Highlight a group the note is being dragged over (drop-to-add).
-    setHoverGroupId(drag.current.moved ? groupAtPoint(e.clientX, e.clientY) : null)
+    const d = drag.current
+    if (!d) return
+    const past = Math.abs(e.clientX - d.sx) > 2 || Math.abs(e.clientY - d.sy) > 2
+    if (past) d.moved = true
+
+    if (d.mode === 'move') {
+      const dx = (e.clientX - d.sx) / zoom
+      const dy = (e.clientY - d.sy) / zoom
+      moveNote(note.id, d.ox + dx, d.oy + dy)
+      setHoverGroupId(d.moved ? groupAtPoint(e.clientX, e.clientY) : null)
+    } else if (d.moved && note.groupId) {
+      reorderByPointer(note.groupId, note.id, e.clientY)
+    }
   }
 
   const onHeaderPointerUp = (e: React.PointerEvent) => {
     const d = drag.current
     drag.current = null
+    setDragging(false)
     if (!d || !d.moved) {
       toggleSelect(note.id, e.shiftKey)
       return
     }
-    // Dropped onto a group → add it there.
-    const gid = groupAtPoint(e.clientX, e.clientY)
-    setHoverGroupId(null)
-    if (gid) addNoteToGroup(note.id, gid)
+    if (d.mode === 'move') {
+      const gid = groupAtPoint(e.clientX, e.clientY)
+      setHoverGroupId(null)
+      if (gid) addNoteToGroup(note.id, gid)
+    }
+  }
+
+  // Live-reorder within a group by comparing the cursor to sibling midpoints.
+  const reorderByPointer = (groupId: string, noteId: string, clientY: number) => {
+    const others = Array.from(
+      document.querySelectorAll<HTMLElement>(`[data-group-id="${groupId}"] [data-note-id]`),
+    ).filter((el) => el.getAttribute('data-note-id') !== noteId)
+    let insert = others.length
+    for (let i = 0; i < others.length; i++) {
+      const r = others[i].getBoundingClientRect()
+      if (clientY < r.top + r.height / 2) {
+        insert = i
+        break
+      }
+    }
+    moveInGroup(groupId, noteId, insert)
   }
 
   const onContextMenu = (e: React.MouseEvent) => {
@@ -122,13 +156,15 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
     <div
       ref={cardRef}
       data-note-id={note.id}
-      className={'note-card' + (selected ? ' is-selected' : '')}
+      className={
+        'note-card' + (selected ? ' is-selected' : '') + (dragging ? ' is-dragging' : '')
+      }
       style={{
         ...(positioned
           ? { position: 'absolute', left: note.x, top: note.y }
           : { position: 'relative' }),
         width: note.width,
-        height: positioned && note.height != null ? note.height : undefined,
+        height: note.height != null ? note.height : undefined,
         background: note.color,
       }}
       onPointerDown={(e) => e.stopPropagation()}
@@ -143,11 +179,7 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
         <span className="grip" aria-hidden>⠿</span>
         <div className="note-actions" onPointerDown={(e) => e.stopPropagation()}>
           {!positioned && (
-            <>
-              <button className="icon-btn" title="Move up" onClick={() => reorderInGroup(note.groupId!, note.id, -1)}>↑</button>
-              <button className="icon-btn" title="Move down" onClick={() => reorderInGroup(note.groupId!, note.id, 1)}>↓</button>
-              <button className="icon-btn" title="Pop out of group" onClick={() => removeFromGroup(note.id)}>⇱</button>
-            </>
+            <button className="icon-btn" title="Pop out of group" onClick={() => removeFromGroup(note.id)}>⇱</button>
           )}
           <div className="color-wrap">
             <button
@@ -188,8 +220,10 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
         <Editor noteId={note.id} title={note.title} content={note.content} />
       </div>
 
-      {positioned &&
-        (['nw', 'ne', 'sw', 'se'] as Corner[]).map((corner) => (
+      {/* Free notes resize from any corner; grouped notes (in a vertical stack)
+          resize from the bottom-right so width/height grow without repositioning. */}
+      {(positioned ? (['nw', 'ne', 'sw', 'se'] as Corner[]) : (['se'] as Corner[])).map(
+        (corner) => (
           <div
             key={corner}
             className={'resize-handle rh-' + corner}
@@ -197,7 +231,8 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
             onPointerMove={onResizeMove}
             onPointerUp={onResizeUp}
           />
-        ))}
+        ),
+      )}
     </div>
   )
 }

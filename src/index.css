@@ -72,6 +72,12 @@ body {
 .note-card.is-selected {
   outline-color: var(--accent);
 }
+.note-card.is-dragging {
+  z-index: 10;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  opacity: 0.97;
+  cursor: grabbing;
+}
 
 .note-header {
   height: 26px;

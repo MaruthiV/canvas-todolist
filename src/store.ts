@@ -60,7 +60,7 @@ interface Store {
   setGroupLabel: (id: string, label: string) => void
   groupSelection: () => void
   ungroup: (id: string) => void
-  reorderInGroup: (groupId: string, noteId: string, dir: -1 | 1) => void
+  moveInGroup: (groupId: string, noteId: string, index: number) => void
   removeFromGroup: (noteId: string) => void
   addNoteToGroup: (noteId: string, groupId: string) => void
 
@@ -255,16 +255,16 @@ export const useStore = create<Store>((set, get) => {
       persist()
     },
 
-    reorderInGroup: (groupId, noteId, dir) => {
+    moveInGroup: (groupId, noteId, index) => {
       set((s) => {
         const g = s.groups[groupId]
-        if (!g) return s
-        const idx = g.noteIds.indexOf(noteId)
-        const j = idx + dir
-        if (idx < 0 || j < 0 || j >= g.noteIds.length) return s
-        const noteIds = [...g.noteIds]
-        ;[noteIds[idx], noteIds[j]] = [noteIds[j], noteIds[idx]]
-        return { groups: { ...s.groups, [groupId]: { ...g, noteIds } } }
+        if (!g || !g.noteIds.includes(noteId)) return s
+        const ids = g.noteIds.filter((x) => x !== noteId)
+        const at = Math.max(0, Math.min(ids.length, index))
+        ids.splice(at, 0, noteId)
+        const same = ids.length === g.noteIds.length && ids.every((v, i) => v === g.noteIds[i])
+        if (same) return s
+        return { groups: { ...s.groups, [groupId]: { ...g, noteIds: ids } } }
       })
       persist()
     },
