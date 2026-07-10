@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
-import type { Camera, FocusTarget, Group, Note } from './types'
+import type { Camera, ContextMenuState, FocusTarget, Group, Note } from './types'
 
 const STORAGE_KEY = 'canvas-todo-v1'
 
@@ -73,8 +73,8 @@ interface Store {
   setFocus: (f: FocusTarget) => void
 
   // transient UI
-  contextMenu: { x: number; y: number; noteId: string } | null
-  openContextMenu: (x: number, y: number, noteId: string) => void
+  contextMenu: ContextMenuState | null
+  openContextMenu: (menu: ContextMenuState) => void
   closeContextMenu: () => void
   hoverGroupId: string | null
   setHoverGroupId: (id: string | null) => void
@@ -311,7 +311,7 @@ export const useStore = create<Store>((set, get) => {
       persist()
     },
 
-    openContextMenu: (x, y, noteId) => set({ contextMenu: { x, y, noteId } }),
+    openContextMenu: (menu) => set({ contextMenu: menu }),
     closeContextMenu: () => set({ contextMenu: null }),
     setHoverGroupId: (id) =>
       set((s) => (s.hoverGroupId === id ? s : { hoverGroupId: id })),

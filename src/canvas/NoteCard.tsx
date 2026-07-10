@@ -149,7 +149,7 @@ export function NoteCard({ note, positioned, zoom, selected }: Props) {
   const onContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    openContextMenu(e.clientX, e.clientY, note.id)
+    openContextMenu({ kind: 'note', x: e.clientX, y: e.clientY, noteId: note.id })
   }
 
   return (

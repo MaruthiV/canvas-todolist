@@ -22,6 +22,7 @@ export function Canvas() {
   const setSelection = useStore((s) => s.setSelection)
   const clearSelection = useStore((s) => s.clearSelection)
   const addNote = useStore((s) => s.addNote)
+  const openContextMenu = useStore((s) => s.openContextMenu)
 
   const viewportRef = useRef<HTMLDivElement>(null)
   const camRef = useRef(camera)
@@ -145,6 +146,17 @@ export function Canvas() {
     setMarquee(null)
   }
 
+  const onCanvasContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const isBackground = !(e.target as HTMLElement).closest('.note-card, .group-frame')
+    if (!isBackground) return // notes handle their own menu; ignore group frames
+    const cam = camRef.current
+    const rect = viewportRef.current!.getBoundingClientRect()
+    const wx = (e.clientX - rect.left - cam.x) / cam.zoom
+    const wy = (e.clientY - rect.top - cam.y) / cam.zoom
+    openContextMenu({ kind: 'canvas', x: e.clientX, y: e.clientY, worldX: wx, worldY: wy })
+  }
+
   const onDoubleClick = (e: React.MouseEvent) => {
     const isBackground = !(e.target as HTMLElement).closest('.note-card, .group-frame')
     if (!isBackground) return
@@ -170,7 +182,7 @@ export function Canvas() {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onDoubleClick={onDoubleClick}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={onCanvasContextMenu}
     >
       <div
         className="world"

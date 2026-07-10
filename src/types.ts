@@ -31,3 +31,7 @@ export type FocusTarget =
   | { kind: 'note'; id: string }
   | { kind: 'group'; id: string }
   | null
+
+export type ContextMenuState =
+  | { kind: 'note'; x: number; y: number; noteId: string }
+  | { kind: 'canvas'; x: number; y: number; worldX: number; worldY: number }
